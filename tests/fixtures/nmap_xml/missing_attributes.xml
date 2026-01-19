@@ -1,0 +1,10 @@
+<nmaprun>
+  <host>
+    <ports>
+      <port protocol="tcp">
+        <state state="open"/>
+        <service/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>

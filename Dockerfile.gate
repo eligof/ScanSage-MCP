@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+ARG OFFLINE_WHEELS=0
+WORKDIR /app
+
+COPY . .
+
+RUN if [ "$OFFLINE_WHEELS" = "1" ]; then \
+    python -m pip install --no-index --find-links /app/.wheels pip setuptools wheel && \
+    python -m pip install --no-index --find-links /app/.wheels -e ".[dev]" --no-build-isolation; \
+else \
+    python -m pip install -U pip setuptools wheel && \
+    python -m pip install -e ".[dev]"; \
+fi
+
+CMD ["bash", "-c", "python -m ruff format . && python -m ruff check . && python -m pytest -q"]

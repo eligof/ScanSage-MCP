@@ -1,0 +1,15 @@
+{
+  "operation": "nmap_ingest",
+  "ingest_id": "ex123456",
+  "format": "nmap_xml",
+  "summary": {
+    "payload_bytes": 20,
+    "payload_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "parsed": false
+  },
+  "findings": [],
+  "next_steps": [
+    "Await next parsing slice before acting on findings",
+    "Log the digest for downstream reconciliation"
+  ]
+}

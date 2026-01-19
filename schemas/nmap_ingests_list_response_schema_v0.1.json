@@ -1,0 +1,85 @@
+{
+  "type": "object",
+  "required": ["operation", "count", "max_records", "ingests"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "const": "nmap_ingests_list"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_records": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "ingests": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/nmap_ingest_record"
+      }
+    }
+  },
+  "definitions": {
+    "nmap_ingest_record": {
+      "type": "object",
+      "required": ["ingest_id", "created_at", "format", "summary", "next_steps"],
+      "properties": {
+        "ingest_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["nmap_xml"]
+        },
+        "summary": {
+          "type": "object",
+          "required": ["payload_bytes", "payload_sha256", "parsed"],
+          "properties": {
+            "payload_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "payload_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "parsed": {
+              "type": "boolean",
+              "const": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "next_steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 50
+        },
+        "parser_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "parsed": {
+          "type": "boolean"
+        },
+        "findings_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,8 @@
+version: "3.9"
+
+services:
+  mcp-server:
+    build:
+      context: .
+    image: scansage/mcp-server:latest
+    restart: unless-stopped

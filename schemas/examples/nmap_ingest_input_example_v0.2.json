@@ -1,0 +1,8 @@
+{
+  "format": "synthetic_v1",
+  "payload": "PORT_OPEN 22/tcp service=ssh\nPORT_OPEN 80/tcp service=http",
+  "meta": {
+    "source": "unit-test",
+    "parser": "synthetic_v1"
+  }
+}

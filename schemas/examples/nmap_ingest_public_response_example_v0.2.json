@@ -1,0 +1,24 @@
+{
+  "operation": "nmap_ingest",
+  "ingest_id": "ex123456",
+  "format": "nmap_xml",
+  "summary": {
+    "payload_bytes": 20,
+    "payload_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "parsed": false
+  },
+  "findings": [],
+  "next_steps": [
+    "Await a dedicated parser before acting on any findings.",
+    "Confirm the ingestion digest matches downstream expectations."
+  ],
+  "parser_version": "noop-0.1",
+  "findings_count": 0,
+  "parsed_findings": [
+    {
+      "title": "Placeholder finding",
+      "detail": "No actual parsing yet; placeholder entry.",
+      "confidence": "low"
+    }
+  ]
+}

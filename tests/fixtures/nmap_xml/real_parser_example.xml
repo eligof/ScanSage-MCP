@@ -1,0 +1,19 @@
+<nmaprun>
+  <host>
+    <address addr="198.51.100.10" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service
+          name="ssh"
+          product="OpenSSH"
+          version="8.6.0p1"
+          extrainfo="protocols routed through audit.example.com"/>
+      </port>
+      <port protocol="tcp" portid="80">
+        <state state="open"/>
+        <service name="http" product="nginx" version="1.25.1"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>

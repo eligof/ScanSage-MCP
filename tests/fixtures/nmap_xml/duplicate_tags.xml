@@ -1,0 +1,17 @@
+<nmaprun>
+  <host>
+    <host>
+      <address addr="198.51.100.30" addrtype="ipv4"/>
+    </host>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service name="ssh"/>
+      </port>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service name="ssh"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>

@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "required": ["title", "detail", "confidence"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "detail": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    }
+  },
+  "additionalProperties": false
+}

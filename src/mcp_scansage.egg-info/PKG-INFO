@@ -1,0 +1,119 @@
+Metadata-Version: 2.4
+Name: mcp-scansage
+Version: 0.1.0
+Summary: Docker-first FastMCP bootstrap for ScanSage
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+
+# AIDE Python Starter Pack
+
+This folder contains a minimal, production-friendly set of companion documents for the **AIDE** prompt.
+
+## What's included
+- `AI_CONTRACT.md` — the constitution (non-negotiable rules)
+- `ARCHITECTURE.md` — a minimal layering guide
+- `DECISIONS.md` — decision log template
+- `projectmap.md` — living module map
+- `specs/FEATURE_NAME.md` — Phase 1 planning template
+- `tools/forbidden_patterns_check.py` — optional heuristic checker for obvious forbidden patterns
+
+## Recommended quick start (new repo)
+1) Copy these files into the root of your repository.
+2) Customize `ARCHITECTURE.md` and `projectmap.md` to match your structure.
+3) Add your stack-specific gates (ruff/mypy/pytest commands) to CI.
+4) Use `specs/FEATURE_NAME.md` for every Core task.
+
+## Development
+1. Create a virtual environment
+   ```
+   python -m venv .venv
+   ```
+2. Bootstrap tooling (ensurepip may already have bundled wheels)
+   ```
+   .venv/bin/python -m ensurepip --upgrade
+   .venv/bin/python -m pip install -U pip
+   .venv/bin/python -m pip install -e ".[dev]"
+   ```
+   If `.venv/bin/python -m ensurepip` does not install setuptools, install your OS `python-setuptools` (and `python-pip` if needed) or use the wheelhouse path below, then retry the bootstrap.
+3. Run the single gate command
+   ```
+   python -m ruff format . && python -m ruff check . && python -m pytest -q
+   ```
+
+If you prefer `make`, the repository now exposes:
+- `make preflight` — create `.venv` if needed and run `preflight.py --mode any`.
+- `make dev` — venv creation, host preflight, and dev install.
+- `make gate` — the bundled formatting/lint/test command.
+
+### Offline via wheelhouse
+1. On a networked machine (once): `make wheelhouse` to populate `.wheels/` with the required pip/setuptools/wheel and tooling wheels.
+2. Copy `.wheels/` into this repository on the offline host.
+3. Run:
+   ```
+   make offline-dev
+   make gate
+   ```
+   The wheelhouse still needs to be generated where downloads are allowed; the offline commands reuse those wheels without hitting PyPI.
+
+## Run gates in Docker
+If the host Python is stripped (no setuptools) or you want a reproducible containerized gate run, build the gate runner:
+
+**Online:**
+- `make gate-docker`
+
+**Offline (wheelhouse required):**
+1. On an online machine run `make wheelhouse` and copy `.wheels/` into the repo root.
+2. Run `make gate-docker` on the offline host. The Dockerfile.gate build uses `OFFLINE_WHEELS=1` when the directory exists and installs from `/app/.wheels`, so the gates run without reaching PyPI.
+3. `make gate-image` builds the gate image only (useful for debugging); `make gate-docker` builds + runs the container.
+
+This workflow keeps the runtime Dockerfile untouched while providing a gate runner that works even if the host pip/setuptools are absent.
+
+## Preflight + Troubleshooting
+Prefer `make preflight` because it creates `.venv` if needed and runs `preflight.py --mode any` inside the project venv. The command prints lines such as `PREFLIGHT context=venv`, `PREFLIGHT pip=OK`, and either `Recommended path: ...` or `Recommended next step: ...`. Running `python preflight.py` directly may show `context=system` if you are not inside `.venv`; rerun with `make preflight` after creating the venv.
+
+- If `docker-daemon=FAIL` with “permission denied” or “Cannot connect”, Docker is installed but the daemon socket is inaccessible. Make sure the Docker daemon is running, your user can talk to `/var/run/docker.sock` (for example via the docker group or rootless mode), or run the gate runner as root. Once the daemon becomes reachable, rerun `make preflight` and then `make gate-docker`.
+- If `setuptools=FAIL`, install your OS `python-setuptools` (and `python-pip` if missing) or rely on the wheelhouse path above (`make wheelhouse` on an online machine + `make offline-dev` on the offline host).
+- If `.wheels/` is missing but `Recommended path: Offline dev...` appears, copy a wheelhouse from an online machine (or recreate it with `make wheelhouse`) before running `make offline-dev && make gate`.
+
+`make dev` now runs `.venv/bin/python preflight.py --mode host` before bootstrapping ensurepip/pip, so it stops early if your venv lacks pip or setuptools. `make gate-docker` runs `preflight.py --mode docker` first, so Docker permission errors are detected before building the gate image.
+
+This legacy `setup.cfg` packaging leaves setuptools resolution to your OS/python install, so `pip install -e ".[dev]"` no longer tries to download `setuptools>=61.0`. If you cannot rely on ensurepip, install your OS `python-setuptools` package before retrying the above steps.
+
+## Development command matrix
+See `docs/dev_bootstrap_matrix.md` for the copied command for each path; here is the same information inline for quick reference.
+
+### Host dev (requires pip/setuptools/ruff/pytest)
+```
+python -m venv .venv && \
+.venv/bin/python -m ensurepip --upgrade && \
+.venv/bin/python -m pip install -U pip && \
+.venv/bin/python preflight.py --mode host && \
+.venv/bin/python -m pip install -e ".[dev]" && \
+python -m ruff format . && \
+python -m ruff check . && \
+python -m pytest -q
+```
+If `ruff` or `pytest` are not installed, these gates cannot run until you bootstrap the tooling (use the wheelhouse path or install the packages via your OS/distribution).
+
+### Offline wheelhouse
+```
+make wheelhouse    # run on an online machine
+make offline-dev && make gate
+```
+
+### Docker gate-runner
+```
+make gate-docker
+```
+
+The docker path is useful when the host Python cannot satisfy the pip/setuptools requirements or when you want a reproducible containerized gate run. `make gate-docker` will reuse `.wheels/` automatically when it exists.
+
+## Optional forbidden pattern checker
+Run:
+- `python tools/forbidden_patterns_check.py`
+
+This script is heuristic-based (not perfect) and meant as an early warning.

@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "required": ["format", "payload"],
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": ["nmap_xml"]
+    },
+    "payload": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32768
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

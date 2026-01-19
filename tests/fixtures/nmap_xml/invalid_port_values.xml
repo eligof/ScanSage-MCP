@@ -1,0 +1,15 @@
+<nmaprun>
+  <host>
+    <address addr="198.51.100.40" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="not_a_number">
+        <state state="open"/>
+        <service name="strange-service"/>
+      </port>
+      <port protocol="tcp" portid="-22">
+        <state state="open"/>
+        <service name="negative-port"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>

@@ -1,0 +1,24 @@
+{
+  "operation": "nmap_ingests_list",
+  "count": 1,
+  "max_records": 16,
+  "ingests": [
+    {
+      "ingest_id": "abc123def456",
+      "created_at": "2026-01-19T12:00:00Z",
+      "format": "nmap_xml",
+      "summary": {
+        "payload_bytes": 42,
+        "payload_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+        "parsed": false
+      },
+      "next_steps": [
+        "Await a dedicated parser before acting on any findings.",
+        "Confirm the ingestion digest matches downstream expectations."
+      ],
+      "parser_version": "noop-0.1",
+      "parsed": false,
+      "findings_count": 0
+    }
+  ]
+}

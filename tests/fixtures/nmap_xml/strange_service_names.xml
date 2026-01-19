@@ -1,0 +1,15 @@
+<nmaprun>
+  <host>
+    <address addr="198.51.100.50" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="65535">
+        <state state="open"/>
+        <service name="💥爆破💥"/>
+      </port>
+      <port protocol="tcp" portid="0">
+        <state state="open"/>
+        <service name="null-service"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>

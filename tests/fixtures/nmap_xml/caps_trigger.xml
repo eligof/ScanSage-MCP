@@ -1,0 +1,47 @@
+<nmaprun>
+  <host>
+    <address addr="198.51.100.60" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service name="ssh"/>
+      </port>
+    </ports>
+  </host>
+  <host>
+    <address addr="198.51.100.61" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="23">
+        <state state="open"/>
+        <service name="telnet"/>
+      </port>
+    </ports>
+  </host>
+  <host>
+    <address addr="198.51.100.62" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="80">
+        <state state="open"/>
+        <service name="http"/>
+      </port>
+    </ports>
+  </host>
+  <host>
+    <address addr="198.51.100.63" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="443">
+        <state state="open"/>
+        <service name="https"/>
+      </port>
+    </ports>
+  </host>
+  <host>
+    <address addr="198.51.100.64" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="8080">
+        <state state="open"/>
+        <service name="proxy"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>

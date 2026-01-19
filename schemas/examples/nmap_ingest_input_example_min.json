@@ -1,0 +1,8 @@
+{
+  "format": "nmap_xml",
+  "payload": "<nmaprun></nmaprun>",
+  "meta": {
+    "source": "unit-test",
+    "note": "placeholder request"
+  }
+}
