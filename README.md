@@ -106,3 +106,19 @@ Run:
 - `python tools/forbidden_patterns_check.py`
 
 This script is heuristic-based (not perfect) and meant as an early warning.
+
+## Closeout / Attestation
+**Milestone:** Nmap real XML minimal parser hardening
+
+**What shipped:**
+- Minimal real XML parser for safe Nmap payloads.
+- DTD/ENTITY pre-parse rejection for unsafe XML constructs.
+- Parsing caps enforcement with rejection, audit events, and no persistence on cap violations.
+- Universal redaction (anti-hack) coverage for parser outputs.
+- Schema validation exercised for PUBLIC ingestion inputs/outputs.
+
+**Security boundary notes:** PUBLIC-only handling, redaction applied to all emitted fields, and reject paths for unsafe XML/cap breaches preserve the sanitized contract.
+
+**Evidence:** `PYTHONPATH=src python tools/forbidden_patterns_check.py && PYTHONPATH=src python -m ruff format . && PYTHONPATH=src python -m ruff check . && PYTHONPATH=src python -m pytest -q`
+
+**Commit:** run `git rev-parse --short HEAD`

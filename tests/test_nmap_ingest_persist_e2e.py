@@ -6,7 +6,7 @@ import pytest
 
 from mcp_scansage.mcp import reason_codes, schema_registry, server
 from mcp_scansage.services import nmap_ingest_store
-from mcp_scansage.services.nmap_parser import CapReason, MinimalNmapXmlParser
+from mcp_scansage.services.nmap_parser import MinimalNmapXmlParser
 
 RESOURCE_NAME = "public://nmap/ingest"
 PUBLIC_SCHEMA = "nmap_ingest_public_response_v0.2"
@@ -201,7 +201,7 @@ def test_noop_parser_default_behaves_as_before(monkeypatch: pytest.MonkeyPatch) 
 def test_capped_response_persists_and_stays_redacted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Capped ingests persist safely and their records stay identifier-free."""
+    """Limit violations reject the ingest and avoid persistence."""
 
     monkeypatch.setenv("SCANSAGE_MAX_NMAP_FINDINGS", "3")
     monkeypatch.setenv("SCANSAGE_MAX_NMAP_HOSTS", "10")
@@ -210,17 +210,8 @@ def test_capped_response_persists_and_stays_redacted(
 
     payload = _build_hosts_payload(5, 1)
     response = _run_ingest_with_parser(monkeypatch, payload, "real_minimal")
-    metadata = response.get("metadata")
-    assert metadata is not None
-    caps = metadata["caps"]
-    assert caps["capped"] is True
-    assert caps["cap_reason"] == CapReason.MAX_FINDINGS.value
-
-    record_resource = server.RESOURCE_REGISTRY["public://nmap/ingest/{ingest_id}"]
-    record_response = record_resource({"ingest_id": response["ingest_id"]})
-    schema_registry.validate("nmap_ingest_get_response_v0.1", record_response)
-    serialized = json.dumps(record_response)
-    assert "_sort_key" not in serialized
-    assert "sort_key" not in serialized
+    assert response["status"] == "error"
+    assert response["reason"] == reason_codes.INVALID_INPUT
+    serialized = json.dumps(response)
     assert "192.0.2." not in serialized
-    assert record_response["ingest"]["findings_count"] == response["findings_count"]
+    assert not nmap_ingest_store.list_ingests()

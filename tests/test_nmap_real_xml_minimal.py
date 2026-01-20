@@ -109,6 +109,48 @@ def test_real_parser_handles_multiple_hosts(monkeypatch: pytest.MonkeyPatch) -> 
     assert titles == ["Port 22 open", "Port 80 open", "Port 443 open"]
 
 
+def test_real_parser_filters_by_status_and_open_ports(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Only up hosts and open ports should be parsed into findings."""
+
+    payload = """<nmaprun>
+  <host>
+    <status state="up"/>
+    <address addr="198.51.100.1" addrtype="ipv4"/>
+    <hostnames>
+      <hostname name="alpha.example.com"/>
+    </hostnames>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service name="ssh" product="OpenSSH" version="9.4"/>
+      </port>
+      <port protocol="tcp" portid="23">
+        <state state="closed"/>
+        <service name="telnet"/>
+      </port>
+    </ports>
+  </host>
+  <host>
+    <status state="down"/>
+    <address addr="198.51.100.2" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="80">
+        <state state="open"/>
+        <service name="http" product="nginx" version="1.21"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>"""
+
+    response = _call_real_parser(monkeypatch, payload)
+    schema_registry.validate(PUBLIC_SCHEMA, response)
+    assert response["findings_count"] == 1
+    titles = [finding["title"] for finding in response["parsed_findings"]]
+    assert titles == ["Port 22 open"]
+
+
 def test_real_parser_rejects_dtd_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     """DTD/XXE payloads remain blocked even when the real parser is active."""
 
@@ -125,6 +167,18 @@ def test_real_parser_rejects_dtd_payload(monkeypatch: pytest.MonkeyPatch) -> Non
     serialized = json.dumps(response)
     assert "<!DOCTYPE" not in serialized
     assert "file:///etc/passwd" not in serialized
+
+
+def test_real_parser_rejects_malformed_xml(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Malformed XML should yield sanitized errors without echoing payload."""
+
+    payload = "<nmaprun><host><ports></nmaprun>"
+    response = _call_real_parser(monkeypatch, payload)
+
+    assert response["status"] == "error"
+    assert response["reason"] == reason_codes.INVALID_INPUT
+    serialized = json.dumps(response)
+    assert payload not in serialized
 
 
 @pytest.mark.parametrize(
@@ -155,5 +209,86 @@ def test_real_parser_redacts_identifiers(
 </nmaprun>"""
 
     response = _call_real_parser(monkeypatch, payload)
+    serialized = json.dumps(response)
+    assert identifier not in serialized
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "198.51.100.22",
+        "2001:db8::42",
+        "AA:BB:CC:DD:EE:FF",
+        "node.example.com",
+    ],
+)
+def test_real_parser_redacts_host_context_identifiers(
+    monkeypatch: pytest.MonkeyPatch, identifier: str
+) -> None:
+    """Anti-Hack: host address/hostname identifiers are redacted."""
+
+    payload = f"""<nmaprun>
+  <host>
+    <status state="up"/>
+    <address addr="{identifier}" addrtype="ipv4"/>
+    <hostnames>
+      <hostname name="{identifier}"/>
+    </hostnames>
+    <ports>
+      <port protocol="tcp" portid="443">
+        <state state="open"/>
+        <service name="https" product="safe-product"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>"""
+
+    response = _call_real_parser(monkeypatch, payload)
+    schema_registry.validate(PUBLIC_SCHEMA, response)
+    serialized = json.dumps(response)
+    assert identifier not in serialized
+
+
+@pytest.mark.parametrize(
+    "attribute",
+    ["name", "product", "version", "extrainfo"],
+)
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "203.0.113.10",
+        "2001:db8::2",
+        "AA:BB:CC:DD:EE:FF",
+        "host.example.com",
+    ],
+)
+def test_real_parser_redacts_service_attributes(
+    monkeypatch: pytest.MonkeyPatch, attribute: str, identifier: str
+) -> None:
+    """Anti-Hack: identifier-like tokens in service attributes are redacted."""
+
+    service_attrs = {
+        "name": "ssh",
+        "product": "OpenSSH",
+        "version": "9.4",
+        "extrainfo": "safe-info",
+    }
+    service_attrs[attribute] = f"token-{identifier}"
+    service_attr_text = " ".join(
+        f'{key}="{value}"' for key, value in service_attrs.items()
+    )
+    payload = f"""<nmaprun>
+  <host>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service {service_attr_text}/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>"""
+
+    response = _call_real_parser(monkeypatch, payload)
+    schema_registry.validate(PUBLIC_SCHEMA, response)
     serialized = json.dumps(response)
     assert identifier not in serialized

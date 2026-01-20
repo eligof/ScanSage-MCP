@@ -72,7 +72,7 @@ def test_fuzz_corpus_ingest_safe(
 def test_caps_metadata_deterministic_for_noisy_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Caps metadata stays identical when the same noisy input exceeds limits."""
+    """Limit violations should return sanitized errors consistently."""
 
     monkeypatch.setenv("SCANSAGE_NMAP_XML_PARSER", "real_minimal")
     monkeypatch.setenv("SCANSAGE_MAX_NMAP_FINDINGS", "2")
@@ -86,13 +86,9 @@ def test_caps_metadata_deterministic_for_noisy_payload(
     first = resource({"format": "nmap_xml", "payload": payload})
     second = resource({"format": "nmap_xml", "payload": payload})
 
-    assert first["parsed_findings"] == second["parsed_findings"]
-    assert first.get("metadata") == second.get("metadata")
-    metadata = first.get("metadata")
-    assert metadata is not None
-    caps = metadata["caps"]
-    assert caps["cap_reason"] == "MAX_FINDINGS"
-    assert caps["limits"]["max_findings"] == 2
+    assert first == second
+    assert first["status"] == "error"
+    assert first["reason"] == reason_codes.INVALID_INPUT
 
     serialized = json.dumps(first)
     _assert_no_identifiers(serialized)

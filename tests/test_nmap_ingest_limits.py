@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from mcp_scansage.mcp import reason_codes, schema_registry, server
+from mcp_scansage.mcp import reason_codes, server
 from mcp_scansage.services import nmap_ingest_store
 from mcp_scansage.services.cap_audit import EVENT_NAME, clear_cap_events, get_cap_events
 from mcp_scansage.services.cap_reason import CapReason
@@ -126,7 +126,7 @@ def test_payload_cap_generates_audit_event() -> None:
 def test_caps_metadata_emitted_when_findings_limit_hit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Large payloads should indicate caps while staying identifier-free."""
+    """Limit violations should reject with sanitized errors."""
 
     _configure_caps_env(monkeypatch, findings_limit=6)
 
@@ -134,19 +134,8 @@ def test_caps_metadata_emitted_when_findings_limit_hit(
     payload = _build_hosts(10, 1)
     response = resource({"format": "nmap_xml", "payload": payload})
 
-    schema_registry.validate(PUBLIC_SCHEMA, response)
-    metadata = response.get("metadata")
-    assert metadata is not None
-    caps = metadata["caps"]
-    assert caps["capped"] is True
-    assert caps["cap_reason"] == CapReason.MAX_FINDINGS.value
-    assert caps["limits"]["max_findings"] == 6
-
-    counts = caps["counts"]
-    assert counts["findings_processed"] == 6
-    assert counts["hosts_processed"] <= counts["ports_processed"]
-    assert response["findings_count"] == 6
-    assert len(response["parsed_findings"]) == 6
+    assert response["status"] == "error"
+    assert response["reason"] == reason_codes.INVALID_INPUT
 
     serialized = json.dumps(response)
     assert "192.0.2." not in serialized
@@ -170,12 +159,13 @@ def test_caps_emit_to_production_sink(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = _build_hosts(10, 1)
     response = resource({"format": "nmap_xml", "payload": payload})
 
+    assert response["status"] == "error"
+    assert response["reason"] == reason_codes.INVALID_INPUT
     assert captured
     event = captured[0]
     assert event["event"] == EVENT_NAME
     assert event["cap_reason"] == CapReason.MAX_FINDINGS.value
     assert event["limits"]["max_findings"] == 4
-    assert response["findings_count"] == 4
     serialized_event = json.dumps(event)
     assert "192.0.2." not in serialized_event
     assert payload not in serialized_event
@@ -196,16 +186,17 @@ def test_caps_ignore_audit_write_errors(monkeypatch: pytest.MonkeyPatch) -> None
     payload = _build_hosts(10, 1)
     response = resource({"format": "nmap_xml", "payload": payload})
 
-    assert response["findings_count"] == 4
+    assert response["status"] == "error"
+    assert response["reason"] == reason_codes.INVALID_INPUT
     events = get_cap_events()
     assert events
     assert events[0]["cap_reason"] == CapReason.MAX_FINDINGS.value
 
 
-def test_caps_truncation_deterministic(
+def test_caps_rejections_deterministic(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Repeated ingests should produce exactly the same truncated output."""
+    """Repeated limit violations should reject consistently."""
 
     _configure_caps_env(monkeypatch, findings_limit=5, host_limit=20, ports_limit=2)
     resource = server.RESOURCE_REGISTRY[RESOURCE_NAME]
@@ -214,11 +205,10 @@ def test_caps_truncation_deterministic(
     first = resource({"format": "nmap_xml", "payload": payload})
     second = resource({"format": "nmap_xml", "payload": payload})
 
-    assert first["parsed_findings"] == second["parsed_findings"]
-    assert first.get("metadata") == second.get("metadata")
+    assert first["status"] == "error"
+    assert first["reason"] == reason_codes.INVALID_INPUT
+    assert first == second
     serialized = json.dumps(first)
-    assert "_sort_key" not in serialized
-    assert "sort_key" not in serialized
     assert "192.0.2." not in serialized
 
 
@@ -237,7 +227,7 @@ def test_caps_truncation_deterministic(
 def test_invalid_env_values_default_to_safe_limits(
     monkeypatch: pytest.MonkeyPatch, env_var: str, limit_key: str, invalid_value: str
 ) -> None:
-    """Non-numeric env values fall back to DEFAULT_NMAP_LIMITS without crashing."""
+    """Non-numeric env values fall back to defaults and reject unsafe payloads."""
 
     env_values = {
         "SCANSAGE_MAX_NMAP_HOSTS": "10",
@@ -263,10 +253,8 @@ def test_invalid_env_values_default_to_safe_limits(
     payload = _build_hosts(6, 2)
     response = resource({"format": "nmap_xml", "payload": payload})
 
-    metadata = response.get("metadata")
-    assert metadata is not None
-    caps = metadata["caps"]
-    assert caps["capped"] is True
-    assert caps["limits"][limit_key] == getattr(DEFAULT_NMAP_LIMITS, limit_key)
+    assert response["status"] == "error"
+    assert response["reason"] == reason_codes.INVALID_INPUT
+    assert getattr(DEFAULT_NMAP_LIMITS, limit_key)
     serialized = json.dumps(response)
     assert "192.0.2." not in serialized
