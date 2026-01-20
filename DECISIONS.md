@@ -127,3 +127,19 @@
 **Alternatives Considered:** 1) Skip the caps metadata and limit visibility (rejected because it leaves clients blind to truncation and non-deterministic); 2) Allow persisted summaries to flip `parsed` (rejected because it would violate the current get/list schema); 3) Keep environment parsing scattered in each service (rejected because it would make invalid values crash or diverge from parser usage).
 **Consequences:** All new tests/docs must reflect deterministic truncation, env fallbacks, and the persistence behavior; future slices need to honor `metadata.caps` and the `services/nmap_limits.py` contract.
 **Rollback:** Revert to the previous parser/ingest implementations, drop the metadata block plus `nmap_limits.py`, and accept that repeated ingests may produce non-deterministic caps while persisted summaries always claim `parsed=False`.
+
+## 2026-01-20 — Reject XML with DTD/entity markers before parsing
+**Context:** PUBLIC XML ingestion must treat untrusted payloads as hostile, including XXE/entity expansion vectors that can appear before any parser traversal.
+**Decision:** Reject XML inputs that contain DTD/entity markers or external entity reference cues in the service-layer pre-parse guard, before any XML traversal occurs.
+**Rationale:** Early rejection blocks unsafe XML constructs, keeps the PUBLIC boundary deterministic, and preserves Layer Fidelity by enforcing the safety rule in services.
+**Alternatives Considered:** Rely solely on downstream parser behavior or allow DTD declarations in restricted contexts (rejected as too risky for PUBLIC inputs).
+**Consequences:** Some malformed or legacy XML inputs will be rejected; this is acceptable for the security boundary and consistent with the PUBLIC contract.
+**Rollback:** Remove the pre-parse marker check and related tests if a different XML safety strategy is adopted.
+
+## 2026-01-20 — Reject real XML when parser caps are exceeded
+**Context:** PUBLIC XML ingestion must protect the service boundary from resource exhaustion when parsing untrusted inputs.
+**Decision:** Enforce `max_xml_bytes` at ingest and `max_hosts`/`max_ports_per_host`/`max_findings` inside the real XML parser; when those parser caps are exceeded, reject the request with a sanitized error, emit an audit cap event, and avoid persistence. Findings-only overages in non-XML paths remain truncation-with-metadata instead of hard rejection.
+**Rationale:** Failing closed for real XML avoids partial/ambiguous results, reduces denial-of-service risk, and keeps a consistent, PUBLIC-safe error surface while still allowing bounded synthetic outputs.
+**Alternatives Considered:** Truncate and return partial findings, warn-and-continue, or silently increase defaults (rejected to keep behavior deterministic and safe by default for real XML).
+**Consequences:** Large or noisy XML scans may be rejected unless callers tune caps; synthetic findings can still be truncated with metadata when overages occur.
+**Rollback:** Remove the caps enforcement and related tests, revert audit cap emission, and restore the prior acceptance behavior.

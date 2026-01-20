@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from .cap_audit import record_cap_event
 from .cap_reason import CapReason
 from .nmap_limits import NmapLimitConfig
 from .sanitizer import IDENTIFIER_PATTERN, redact_identifiers
@@ -28,8 +29,10 @@ except ImportError:  # pragma: no cover - optional dependency
     _defused_fromstring = None  # type: ignore[assignment]
     DefusedXmlException = ET.ParseError  # type: ignore[assignment]
 
-_UNSAFE_XML_PATTERN = re.compile(r"<!DOCTYPE|<!ENTITY", re.IGNORECASE)
-"""Regex that detects DTD declarations or entity blocks."""
+_UNSAFE_XML_PATTERN = re.compile(
+    r"<!DOCTYPE|<!ENTITY|\bSYSTEM\b\s+['\"]|\bPUBLIC\b\s+['\"]", re.IGNORECASE
+)
+"""Regex that detects DTD declarations or external entity references."""
 
 
 def parse_xml_safely(xml_bytes: bytes) -> ET.Element:
@@ -195,41 +198,8 @@ class MinimalNmapXmlParser(NmapParser):
 
     def parse(self, payload: bytes) -> ParsedNmapResult:
         root = parse_xml_safely(payload)
-        config = NmapLimitConfig.from_env()
-        tracker = _LimitTracker(config)
-        findings: list[ParsedFinding] = []
-        stop_due_to_findings = False
-
-        for host_index, host in enumerate(root.findall(".//host")):
-            if tracker.hosts_processed >= tracker.max_hosts:
-                tracker.mark_limit(CapReason.MAX_HOSTS)
-                break
-            tracker.hosts_processed += 1
-            ports = host.find("ports")
-            if ports is None:
-                continue
-            ports_seen = 0
-            for port_index, port_elem in enumerate(ports.findall("port")):
-                if ports_seen >= tracker.max_ports_per_host:
-                    tracker.mark_limit(CapReason.MAX_PORTS)
-                    break
-                ports_seen += 1
-                tracker.ports_processed += 1
-                if tracker.findings_processed >= tracker.max_findings:
-                    tracker.mark_limit(CapReason.MAX_FINDINGS)
-                    stop_due_to_findings = True
-                    break
-                finding = self._finding_from_port(port_elem, host_index, port_index)
-                if finding is None:
-                    continue
-                findings.append(finding)
-                tracker.findings_processed += 1
-                if tracker.findings_processed >= tracker.max_findings:
-                    tracker.mark_limit(CapReason.MAX_FINDINGS)
-                    stop_due_to_findings = True
-                    break
-            if stop_due_to_findings:
-                break
+        tracker = _LimitTracker(NmapLimitConfig.from_env())
+        findings = list(self._collect_findings(root, tracker))
 
         parsed = bool(findings)
         cap_info = tracker.to_cap_info() if tracker.cap_reason else None
@@ -240,11 +210,73 @@ class MinimalNmapXmlParser(NmapParser):
             cap_info=cap_info,
         )
 
+    def _collect_findings(
+        self, root: ET.Element, tracker: _LimitTracker
+    ) -> list[ParsedFinding]:
+        findings: list[ParsedFinding] = []
+        for host_index, host in enumerate(root.findall(".//host")):
+            if tracker.hosts_processed >= tracker.max_hosts:
+                self._raise_limit(CapReason.MAX_HOSTS, tracker)
+            if not self._is_host_up(host):
+                continue
+            tracker.hosts_processed += 1
+            host_context = self._build_host_context(host)
+            ports = host.find("ports")
+            if ports is None:
+                continue
+            stop_due_to_findings = self._collect_ports(
+                ports, host_index, host_context, tracker, findings
+            )
+            if stop_due_to_findings:
+                break
+        return findings
+
+    @staticmethod
+    def _is_host_up(host: ET.Element) -> bool:
+        status = host.find("status")
+        if status is None:
+            return True
+        return status.get("state", "").lower() == "up"
+
+    def _collect_ports(
+        self,
+        ports: ET.Element,
+        host_index: int,
+        host_context: tuple[str, ...],
+        tracker: _LimitTracker,
+        findings: list[ParsedFinding],
+    ) -> bool:
+        ports_seen = 0
+        for port_index, port_elem in enumerate(ports.findall("port")):
+            if ports_seen >= tracker.max_ports_per_host:
+                self._raise_limit(CapReason.MAX_PORTS, tracker)
+            ports_seen += 1
+            tracker.ports_processed += 1
+            if tracker.findings_processed >= tracker.max_findings:
+                self._raise_limit(CapReason.MAX_FINDINGS, tracker)
+            finding = self._finding_from_port(
+                port_elem,
+                host_index,
+                port_index,
+                host_context,
+            )
+            if finding is None:
+                continue
+            findings.append(finding)
+            tracker.findings_processed += 1
+            if tracker.findings_processed >= tracker.max_findings:
+                self._raise_limit(CapReason.MAX_FINDINGS, tracker)
+        return False
+
     @staticmethod
     def _finding_from_port(
-        port_elem: ET.Element, host_index: int, port_index: int
+        port_elem: ET.Element,
+        host_index: int,
+        port_index: int,
+        host_context: tuple[str, ...],
     ) -> ParsedFinding | None:
-        if port_elem.get("protocol", "").lower() != "tcp":
+        protocol = port_elem.get("protocol", "").lower()
+        if protocol not in {"tcp", "udp"}:
             return None
         state = port_elem.find("state")
         if state is None or state.get("state", "").lower() != "open":
@@ -259,16 +291,15 @@ class MinimalNmapXmlParser(NmapParser):
         if not service_name:
             return None
         detail_parts = [service_name]
-        product = service_elem.get("product")
-        version = service_elem.get("version")
-        extrainfo = service_elem.get("extrainfo")
-        if product:
-            detail_parts.append(product)
-        if version:
-            detail_parts.append(version)
-        if extrainfo:
-            detail_parts.append(extrainfo)
-        detail = f"{' '.join(detail_parts)} service noted on TCP/{port_id}"
+        for attr in ("product", "version", "extrainfo", "hostname", "ostype"):
+            value = service_elem.get(attr)
+            if value:
+                detail_parts.append(value)
+        detail = (
+            f"{' '.join(detail_parts)} service noted on {protocol.upper()}/{port_id}"
+        )
+        if host_context:
+            detail = f"{detail} host={'; '.join(host_context)}"
         try:
             port_number = int(port_id)
         except ValueError:
@@ -286,6 +317,51 @@ class MinimalNmapXmlParser(NmapParser):
             _sort_key=sort_key,
         )
 
+    @staticmethod
+    def _build_host_context(host: ET.Element) -> tuple[str, ...]:
+        context: list[str] = []
+        for address in host.findall("address"):
+            addr = address.get("addr")
+            addr_type = address.get("addrtype", "").lower()
+            if not addr or addr_type not in {"ipv4", "ipv6", "mac"}:
+                continue
+            context.append(f"{addr_type}:{addr}")
+        hostnames = host.find("hostnames")
+        if hostnames is not None:
+            for hostname in hostnames.findall("hostname"):
+                name = hostname.get("name")
+                if name:
+                    context.append(f"hostname:{name}")
+        return tuple(context)
+
+    @staticmethod
+    def _raise_limit(reason: CapReason, tracker: _LimitTracker) -> None:
+        tracker.mark_limit(reason)
+        record_cap_event(
+            reason=reason.value,
+            limits={
+                "max_payload_bytes": tracker.max_payload_bytes,
+                "max_hosts": tracker.max_hosts,
+                "max_ports_per_host": tracker.max_ports_per_host,
+                "max_findings": tracker.max_findings,
+            },
+            counts_seen={
+                "hosts_processed": tracker.hosts_processed,
+                "ports_processed": tracker.ports_processed,
+                "findings_processed": tracker.findings_processed,
+            },
+            counts_returned={
+                "hosts_returned": 0,
+                "ports_returned": 0,
+                "findings_returned": 0,
+            },
+        )
+        raise ParserLimitError("XML parsing limits exceeded.")
+
+
+class ParserLimitError(ValueError):
+    """Raised when real XML parsing exceeds configured caps."""
+
 
 class _LimitTracker:
     """Internal tracker that records how many elements were processed."""
@@ -294,6 +370,7 @@ class _LimitTracker:
         self.max_hosts = config.max_hosts
         self.max_ports_per_host = config.max_ports_per_host
         self.max_findings = config.max_findings
+        self.max_payload_bytes = config.max_xml_bytes
         self.hosts_processed = 0
         self.ports_processed = 0
         self.findings_processed = 0

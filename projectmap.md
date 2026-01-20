@@ -14,7 +14,7 @@
 
 ## Key Flows
 - FastMCP health resource calls the sanitizer service before exposing payloads to any consumer.
-- PUBLIC Nmap ingestion will route through `services/nmap_ingest.py` and the new `public://nmap/ingest` FastMCP resource.
+- PUBLIC Nmap ingestion routes through `services/nmap_ingest.py` and the `public://nmap/ingest` FastMCP resource.
 - Stored PUBLIC ingestion metadata lives in `state/public` and is accessed through `public://nmap/ingests` and `public://nmap/ingest/{ingest_id}` without ever returning raw XML.
 - Parser metadata (version, findings_count) is produced via `services/nmap_parser.py` before persisting, keeping PUBLIC responses schema-compliant while avoiding raw payload exposure.
 - Schemas + examples validation gate ensures the schema `$defs` stay intact and every example can be validated before PUBLIC ingestion.
