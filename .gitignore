@@ -1,1 +1,6 @@
 state/public/*.json
+*.egg-info/
+*.dist-info/
+.eggs/
+build/
+dist/
