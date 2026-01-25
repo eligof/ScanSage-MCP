@@ -39,12 +39,17 @@ def test_sanitized_responses_drop_raw_paths(payload: str) -> None:
 def test_anti_hack_nmap_ingest_never_leaks_identifiers(identifier: str) -> None:
     """Anti-Hack: PUBLIC ingestion may not echo IP/MAC/hostname fragments."""
 
-    resource = server.RESOURCE_REGISTRY["public://nmap/ingest"]
     payload = f"<nmaprun><host><address>{identifier}</address></host></nmaprun>"
-    response = resource({"format": "nmap_xml", "payload": payload})
 
-    serialized = json.dumps(response)
-    assert identifier not in serialized
+    for resource_name, request in (
+        ("public://nmap/ingest", {"format": "nmap_xml", "payload": payload}),
+        ("ingest_nmap_xml", {"payload": payload}),
+    ):
+        resource = server.RESOURCE_REGISTRY[resource_name]
+        response = resource(request)
+
+        serialized = json.dumps(response)
+        assert identifier not in serialized
 
 
 @pytest.mark.parametrize(
@@ -90,9 +95,9 @@ def test_anti_hack_ingest_records_never_echo_identifiers(identifier: str) -> Non
 
     nmap_ingest_store.clear_records()
 
-    ingest_resource = server.RESOURCE_REGISTRY["public://nmap/ingest"]
+    ingest_resource = server.RESOURCE_REGISTRY["ingest_nmap_xml"]
     payload = f"<nmaprun><host><address>{identifier}</address></host></nmaprun>"
-    response = ingest_resource({"format": "nmap_xml", "payload": payload})
+    response = ingest_resource({"payload": payload})
     ingest_id = response["ingest_id"]
 
     list_resource = server.RESOURCE_REGISTRY["public://nmap/ingests"]

@@ -12,3 +12,9 @@ def test_server_exposes_health_resource() -> None:
 
     assert response["status"] == "ok"
     assert "ScanSage" in response["detail"]
+
+
+def test_server_exposes_ingest_nmap_xml_alias_resource() -> None:
+    """Registry must publish the ingest_nmap_xml alias entrypoint."""
+
+    assert "ingest_nmap_xml" in server.RESOURCE_REGISTRY
