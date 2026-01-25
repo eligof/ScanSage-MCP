@@ -2,10 +2,10 @@
 *A living high-level map of module responsibilities. Keep this updated.*
 
 ## Modules
-- domain/ — pure data models (for example, `Finding`) that capture what is being analyzed without I/O.
-- services/ — universal rules (like response sanitization) that orchestrate domain primitives and enforce safety.
+- domain/ — pure data models (for example, `src/mcp_scansage/domain/models.py`) that capture what is being analyzed without I/O.
+- services/ — universal rules + orchestration in `src/mcp_scansage/services/` (sanitization, caps, parsing seam, ingestion, persistence).
 - adapters/ — placeholder layer for future persistence or API clients that will be wired in by services.
-- mcp/ — FastMCP orchestrator, resource registry, and entrypoint logic.
+- mcp/ — FastMCP orchestrator + resource registry + entrypoint logic in `src/mcp_scansage/mcp/` (not a business-logic layer).
 - schemas/ — schema directory reserved for future shared contracts.
 - docs/ — supporting documentation for the hybrid analyzer effort.
 - `docs/runbook_nmap_caps_limits.md` explains how to configure/interpret PUBLIC Nmap caps without reading the code.
@@ -15,6 +15,8 @@
 ## Key Flows
 - FastMCP health resource calls the sanitizer service before exposing payloads to any consumer.
 - PUBLIC Nmap ingestion routes through `services/nmap_ingest.py` and the `public://nmap/ingest` FastMCP resource.
+- `ingest_nmap_xml` is an additive alias that maps `{payload, meta}` to the same PUBLIC ingest flow without requiring a format selector.
+- Kali Nmap XML → `public://nmap/ingest` → schema validate → caps/size check (`services/nmap_limits.py`) → safe XML boundary + parser seam (`services/nmap_parser.py`) → findings/metadata → PUBLIC response (+ caps audit) + persisted PUBLIC metadata (`state/public`, no raw XML).
 - Stored PUBLIC ingestion metadata lives in `state/public` and is accessed through `public://nmap/ingests` and `public://nmap/ingest/{ingest_id}` without ever returning raw XML.
 - Parser metadata (version, findings_count) is produced via `services/nmap_parser.py` before persisting, keeping PUBLIC responses schema-compliant while avoiding raw payload exposure.
 - Schemas + examples validation gate ensures the schema `$defs` stay intact and every example can be validated before PUBLIC ingestion.

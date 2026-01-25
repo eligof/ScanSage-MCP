@@ -1,5 +1,13 @@
 # DECISIONS.md
 
+## 2026-01-25 — Add `ingest_nmap_xml` alias entrypoint
+**Context:** The repo exposes PUBLIC ingestion via `public://nmap/ingest`, but some MCP clients prefer an XML-only tool that doesn't require supplying a `format` selector.
+**Decision:** Add an additive MCP resource named `ingest_nmap_xml` that validates `{payload, meta}` via a dedicated input schema, hard-sets the format to `NMAP_XML_FORMAT`, and then routes through the same PUBLIC ingestion service boundary used by `public://nmap/ingest`.
+**Rationale:** Keeps Layer Fidelity (server is mapping/validation only), prevents drift by centralizing the format constant, and preserves the existing PUBLIC guarantees (caps, safe XML boundary via parser selection, schema validation, sanitization, and stable error codes).
+**Alternatives Considered:** Renaming/removing `public://nmap/ingest` (breaking) or requiring all clients to pass `format="nmap_xml"` (unnecessary integration friction).
+**Consequences:** The FastMCP registry now includes an additional alias entrypoint plus an alias input schema/example; the original endpoint behavior remains unchanged.
+**Rollback:** Remove the `ingest_nmap_xml` resource and its schema registry entries/tests; keep `public://nmap/ingest` intact.
+
 ## 2026-01-19 — Docker-first src layout bootstrap
 **Context:** Kick-starting the FastMCP hybrid analyzer while honoring the constitution and layer rules.
 **Decision:** Establish the src/mcp_scansage package with domain/services/adapters/mcp, add a sanitizing business rule plus FastMCP health resource, and treat Docker as the primary runtime with a simple smoke server entrypoint.

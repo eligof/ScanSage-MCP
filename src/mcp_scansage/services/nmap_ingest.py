@@ -17,6 +17,9 @@ from .nmap_parser import (
     get_configured_nmap_parser,
 )
 
+NMAP_XML_FORMAT = "nmap_xml"
+"""Canonical format string for Nmap XML ingestion."""
+
 MAX_PAYLOAD_BYTES = DEFAULT_NMAP_LIMITS.max_xml_bytes
 """Default maximum allowed payload size in bytes for PUBLIC ingestion."""
 
@@ -41,7 +44,7 @@ def ingest_nmap_public(
     Create a PUBLIC-safe ingestion summary for Nmap XML payloads.
 
     Args:
-        format: Expected to be "nmap_xml".
+        format: Expected to be :data:`NMAP_XML_FORMAT`.
         payload: The raw XML text (bounded by MAX_PAYLOAD_BYTES).
         meta: Optional metadata (ignored for now to avoid echoing extra data).
 
@@ -49,7 +52,7 @@ def ingest_nmap_public(
         A schema-compliant dictionary ready for PUBLIC consumption.
     """
 
-    if format not in ("nmap_xml", "synthetic_v1"):
+    if format not in (NMAP_XML_FORMAT, "synthetic_v1"):
         raise ValueError("Unsupported format for PUBLIC ingestion.")
 
     limit_config = NmapLimitConfig.from_env()

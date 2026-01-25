@@ -6,21 +6,25 @@ import sys
 from typing import Any, Mapping
 
 from ..services import nmap_ingest_store
-from ..services.nmap_ingest import PayloadTooLargeError, ingest_nmap_public
+from ..services.nmap_ingest import (
+    NMAP_XML_FORMAT,
+    PayloadTooLargeError,
+    ingest_nmap_public,
+)
 from ..services.nmap_parser import SyntheticNmapParser
 from ..services.sanitizer import sanitize_public_response
 from . import reason_codes, schema_registry
 from .schema_registry import SchemaValidationError
 
-NMAP_FORMAT = "nmap_xml"
 INPUT_SCHEMA = "nmap_ingest_input_v0.1"
 SYNTHETIC_FORMAT = "synthetic_v1"
+NMAP_XML_ALIAS_INPUT_SCHEMA = "nmap_ingest_nmap_xml_input_v0.1"
 PUBLIC_RESPONSE_SCHEMA = "nmap_ingest_public_response_v0.2"
 LIST_RESPONSE_SCHEMA = "nmap_ingests_list_response_v0.1"
 GET_RESPONSE_SCHEMA = "nmap_ingest_get_response_v0.1"
 
 FORMAT_SCHEMAS = {
-    NMAP_FORMAT: "nmap_ingest_input_v0.1",
+    NMAP_XML_FORMAT: "nmap_ingest_input_v0.1",
     SYNTHETIC_FORMAT: "nmap_ingest_input_v0.2",
 }
 
@@ -120,6 +124,41 @@ class NmapIngestResource:
         return response
 
 
+class IngestNmapXmlResource:
+    """Alias entrypoint for Nmap XML ingestion.
+
+    Accepts the same payload/meta as the PUBLIC ingest resource but does not
+    require callers to supply the format selector.
+    """
+
+    __slots__ = ()
+
+    def __call__(self, request: Mapping[str, Any]) -> Mapping[str, Any]:
+        return self.ingest(request)
+
+    def get_status(self) -> Mapping[str, str]:
+        payload = {
+            "status": "ok",
+            "detail": "ingest_nmap_xml alias resource ready",
+        }
+        return sanitize_public_response(payload)
+
+    def ingest(self, request: Mapping[str, Any]) -> Mapping[str, Any]:
+        try:
+            schema_registry.validate(NMAP_XML_ALIAS_INPUT_SCHEMA, request)
+        except SchemaValidationError:
+            return _sanitized_error(
+                reason_codes.INVALID_INPUT, "Request failed validation."
+            )
+
+        mapped_request = {
+            "format": NMAP_XML_FORMAT,
+            "payload": request.get("payload"),
+            "meta": request.get("meta") or {},
+        }
+        return NmapIngestResource().ingest(mapped_request)
+
+
 class NmapIngestsListResource:
     """PUBLIC resource that lists stored Nmap ingestion records."""
 
@@ -196,6 +235,7 @@ class NmapIngestGetResource:
 RESOURCE_REGISTRY = {
     "health": HealthResource(),
     "public://nmap/ingest": NmapIngestResource(),
+    "ingest_nmap_xml": IngestNmapXmlResource(),
     "public://nmap/ingests": NmapIngestsListResource(),
     "public://nmap/ingest/{ingest_id}": NmapIngestGetResource(),
 }

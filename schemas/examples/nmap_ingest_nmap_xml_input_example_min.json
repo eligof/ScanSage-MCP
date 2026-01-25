@@ -1,0 +1,7 @@
+{
+  "payload": "<nmaprun></nmaprun>",
+  "meta": {
+    "source": "unit-test",
+    "note": "alias request"
+  }
+}

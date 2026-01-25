@@ -25,6 +25,7 @@ SCHEMA_FILES = {
     "nmap_ingest_input_v0.2": "nmap_ingest_input_schema_v0.2.json",
     "nmap_ingests_list_response_v0.1": "nmap_ingests_list_response_schema_v0.1.json",
     "nmap_ingest_get_response_v0.1": "nmap_ingest_get_response_schema_v0.1.json",
+    "nmap_ingest_nmap_xml_input_v0.1": "nmap_ingest_nmap_xml_input_schema_v0.1.json",
 }
 
 EXAMPLE_FILES = {
@@ -43,6 +44,9 @@ EXAMPLE_FILES = {
     ),
     "nmap_parsed_findings_example_min": "nmap_parsed_findings_example_min.json",
     "nmap_ingest_input_example_v0.2": "nmap_ingest_input_example_v0.2.json",
+    "nmap_ingest_nmap_xml_input_example_min": (
+        "nmap_ingest_nmap_xml_input_example_min.json"
+    ),
 }
 
 _SCHEMAS: dict[str, Mapping[str, Any]] = {}

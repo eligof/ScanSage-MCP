@@ -5,6 +5,7 @@ from mcp_scansage.mcp import schema_registry
 SCHEMA_EXAMPLE_MAP = {
     "nmap_ingest_input_v0.1": "nmap_ingest_input_example_min",
     "nmap_ingest_input_v0.2": "nmap_ingest_input_example_v0.2",
+    "nmap_ingest_nmap_xml_input_v0.1": "nmap_ingest_nmap_xml_input_example_min",
     "nmap_ingest_public_response_v0.1": "nmap_ingest_public_response_example_min",
     "nmap_ingest_public_response_v0.2": "nmap_ingest_public_response_example_v0.2",
     "nmap_ingests_list_response_v0.1": "nmap_ingests_list_response_example_min",
