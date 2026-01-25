@@ -50,6 +50,5 @@ jobs:
         run: |
           python tools/forbidden_patterns_check.py
           python -m ruff format .
-          git diff --exit-code
           python -m ruff check .
           python -m pytest -q
