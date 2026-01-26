@@ -49,6 +49,6 @@ jobs:
       - name: Run gates
         run: |
           python tools/forbidden_patterns_check.py
-          python -m ruff format .
+          python -m ruff format --check .
           python -m ruff check .
           python -m pytest -q
