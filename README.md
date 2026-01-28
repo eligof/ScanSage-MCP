@@ -136,3 +136,6 @@ PYTHONPATH=src python -m ruff check . && \
 PYTHONPATH=src python -m pytest -q
 ```
 **Commit:** run `git rev-parse --short HEAD`
+
+**Release tags:** `vX.Y.Z` (e.g., `v0.1.1`)
+
