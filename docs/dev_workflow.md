@@ -23,6 +23,8 @@ This repo is intentionally set up so local checks match CI as closely as possibl
 - GitHub Actions runs the same gates as `make gate` (see `.github/workflows/ci.yml`).
 - Branch protections/rulesets require the CI checks to pass before merge.
 
+
+> **Tag policy:** Release tags are immutable. If a tag must be moved, document the reason and the exact old/new commit SHAs in the PR body.
 ## Troubleshooting
 - If `make pre-commit` fails because `pre-commit` is missing, install the dev dependencies (see `README.md`).
 - If a hook fails, run `make gate` to reproduce the same checks with full output.
