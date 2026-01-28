@@ -90,6 +90,7 @@ python -m venv .venv && \
 .venv/bin/python -m pip install -U pip && \
 .venv/bin/python preflight.py --mode host && \
 .venv/bin/python -m pip install -e ".[dev]" && \
+PYTHONPATH=src python tools/forbidden_patterns_check.py && \
 PYTHONPATH=src python -m ruff format --check . && \
 PYTHONPATH=src python -m ruff check . && \
 PYTHONPATH=src python -m pytest -q
@@ -111,7 +112,7 @@ The docker path is useful when the host Python cannot satisfy the pip/setuptools
 
 ## Optional forbidden pattern checker
 Run:
-- `python tools/forbidden_patterns_check.py`
+- `PYTHONPATH=src python tools/forbidden_patterns_check.py`
 
 This script is heuristic-based (not perfect) and meant as an early warning.
 
@@ -127,6 +128,11 @@ This script is heuristic-based (not perfect) and meant as an early warning.
 
 **Security boundary notes:** PUBLIC-only handling, redaction applied to all emitted fields, and reject paths for unsafe XML/cap breaches preserve the sanitized contract.
 
-**Evidence:** `PYTHONPATH=src python tools/forbidden_patterns_check.py && PYTHONPATH=src python -m ruff format --check . && PYTHONPATH=src python -m ruff check . && PYTHONPATH=src python -m pytest -q`
-
+**Evidence:**
+```bash
+PYTHONPATH=src python tools/forbidden_patterns_check.py && \
+PYTHONPATH=src python -m ruff format --check . && \
+PYTHONPATH=src python -m ruff check . && \
+PYTHONPATH=src python -m pytest -q
+```
 **Commit:** run `git rev-parse --short HEAD`
