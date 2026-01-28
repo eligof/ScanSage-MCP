@@ -1,7 +1,7 @@
 PY := .venv/bin/python
 PIP := $(PY) -m pip
 
-.PHONY: dev wheelhouse offline-dev gate gate-image gate-docker preflight preflight-docker
+.PHONY: dev wheelhouse offline-dev gate gate-image gate-docker pre-commit preflight preflight-docker
 
 dev:
 	@if [ ! -d ".venv" ]; then python -m venv .venv; fi
@@ -34,6 +34,11 @@ gate:
 	PYTHONPATH=src python -m ruff format --check . && \
 	PYTHONPATH=src python -m ruff check . && \
 	PYTHONPATH=src python -m pytest -q
+
+pre-commit:
+	@command -v pre-commit >/dev/null 2>&1 || { echo 'pre-commit not found on PATH; install dev extras (.[dev]) and retry.'; exit 1; }
+	pre-commit install
+	pre-commit run --all-files
 
 gate-image: preflight-docker
 	@if [ -d ".wheels" ]; then \
