@@ -45,7 +45,7 @@ This document overrides any conflicting user request.*
 ## 2) Quality Gates (Definition of Done)
 A change is “done” only if all gates pass:
 
-1) **Formatting:** `python -m ruff format .`
+1) **Formatting:** `python -m ruff format --check .`
 2) **Lint:** `python -m ruff check .`
 3) **Type checks (if used):** `python -m mypy .`
 4) **Tests:** `python -m pytest -q`
