@@ -1,0 +1,14 @@
+repos:
+  - repo: local
+    hooks:
+      - id: gate
+        name: gate (forbidden patterns + ruff + pytest)
+        entry: >-
+          bash -c 'PYTHONPATH=src python tools/forbidden_patterns_check.py &&
+          PYTHONPATH=src python -m ruff format --check . &&
+          PYTHONPATH=src python -m ruff check . &&
+          PYTHONPATH=src python -m pytest -q'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

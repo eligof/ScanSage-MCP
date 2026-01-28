@@ -16,9 +16,9 @@ python -m venv .venv && \
 .venv/bin/python -m pip install -U pip && \
 .venv/bin/python preflight.py --mode host && \
 .venv/bin/python -m pip install -e ".[dev]" && \
-python -m ruff format . && \
-python -m ruff check . && \
-python -m pytest -q
+PYTHONPATH=src python -m ruff format --check . && \
+PYTHONPATH=src python -m ruff check . && \
+PYTHONPATH=src python -m pytest -q
 ```
 
 This path requires a working `pip`/`setuptools` inside `.venv` plus `ruff`/`pytest`. If those packages are missing, the command will fail—gates cannot run until the tooling is installed (see the preflight output for guidance).

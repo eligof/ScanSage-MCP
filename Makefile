@@ -30,7 +30,10 @@ offline-dev:
 	$(PIP) install --no-build-isolation --no-index --find-links .wheels -e ".[dev]"
 
 gate:
-	python -m ruff format . && python -m ruff check . && python -m pytest -q
+	PYTHONPATH=src python tools/forbidden_patterns_check.py && \
+	PYTHONPATH=src python -m ruff format --check . && \
+	PYTHONPATH=src python -m ruff check . && \
+	PYTHONPATH=src python -m pytest -q
 
 gate-image: preflight-docker
 	@if [ -d ".wheels" ]; then \

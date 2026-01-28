@@ -30,8 +30,16 @@ This folder contains a minimal, production-friendly set of companion documents f
    If `.venv/bin/python -m ensurepip` does not install setuptools, install your OS `python-setuptools` (and `python-pip` if needed) or use the wheelhouse path below, then retry the bootstrap.
 3. Run the single gate command
    ```
-   python -m ruff format . && python -m ruff check . && python -m pytest -q
+   PYTHONPATH=src python tools/forbidden_patterns_check.py && \
+   PYTHONPATH=src python -m ruff format --check . && \
+   PYTHONPATH=src python -m ruff check . && \
+   PYTHONPATH=src python -m pytest -q
    ```
+
+### Pre-commit (optional)
+After installing `.[dev]`:
+- `pre-commit install`
+- `pre-commit run --all-files`
 
 If you prefer `make`, the repository now exposes:
 - `make preflight` — create `.venv` if needed and run `preflight.py --mode any`.
@@ -82,9 +90,9 @@ python -m venv .venv && \
 .venv/bin/python -m pip install -U pip && \
 .venv/bin/python preflight.py --mode host && \
 .venv/bin/python -m pip install -e ".[dev]" && \
-python -m ruff format . && \
-python -m ruff check . && \
-python -m pytest -q
+PYTHONPATH=src python -m ruff format --check . && \
+PYTHONPATH=src python -m ruff check . && \
+PYTHONPATH=src python -m pytest -q
 ```
 If `ruff` or `pytest` are not installed, these gates cannot run until you bootstrap the tooling (use the wheelhouse path or install the packages via your OS/distribution).
 
@@ -119,6 +127,6 @@ This script is heuristic-based (not perfect) and meant as an early warning.
 
 **Security boundary notes:** PUBLIC-only handling, redaction applied to all emitted fields, and reject paths for unsafe XML/cap breaches preserve the sanitized contract.
 
-**Evidence:** `PYTHONPATH=src python tools/forbidden_patterns_check.py && PYTHONPATH=src python -m ruff format . && PYTHONPATH=src python -m ruff check . && PYTHONPATH=src python -m pytest -q`
+**Evidence:** `PYTHONPATH=src python tools/forbidden_patterns_check.py && PYTHONPATH=src python -m ruff format --check . && PYTHONPATH=src python -m ruff check . && PYTHONPATH=src python -m pytest -q`
 
 **Commit:** run `git rev-parse --short HEAD`
