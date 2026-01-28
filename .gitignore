@@ -1,4 +1,18 @@
-state/public/*.json
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+
+# Runtime state outputs (keep state/public/.gitkeep)
+/state/**
+!/state/public/
+/state/public/*
+!/state/public/.gitkeep
+
+# Packaging artifacts
 *.egg-info/
 *.dist-info/
 .eggs/
